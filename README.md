@@ -4,6 +4,9 @@
 接下来要完成的功能：
 已完成第一阶段#1. 实现一个简单的虚拟机器人物控制接口，编写虚拟机器人的状态管理功能。
 2. 准备实现基础的的虚拟机器人物联网功能，编写虚拟机器人的网络通信功能。
-        准备学习相关的hppts知识，还有fastapi，完成GET功能（feat：query-api）还有POST功能（feat：control-api）
+        完成GET功能（feat：query-api）还有POST功能（feat：control-api）
+        
+control-api需要实现坐标映射，以及预设任务逻辑实现
+
 
 3.后一阶段实现ui界面
