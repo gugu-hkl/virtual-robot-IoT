@@ -9,7 +9,8 @@ robot = Robot()
 
 class MoveRequest(BaseModel):
     direction: Literal['forward', 'backward', 'left', 'right']
-    speed: int = Field(gt=0, le=100)
+    speed: float = Field(gt=0, le=100, description="速度, cm/s")
+    duration_s: float = Field(gt=0, le=60, description="持续时间, 秒")
 
 class TaskRequest(BaseModel):
     name: Literal['forward', 'square']
@@ -27,8 +28,8 @@ async def get_sensor():
 #POST请求，控制机器人运动
 @app.post("/move")
 async def move(request: MoveRequest):
-    robot.move_status(request.direction, request.speed)
-    return {"message": "机器人正在运动,运动指令已接受", "status": robot.get_status()}
+    robot.move_status(request.direction, request.speed, request.duration_s)
+    return {"message": "运动指令已接受", "status": robot.get_status()}
 
 @app.post("/stop")
 async def stop():
