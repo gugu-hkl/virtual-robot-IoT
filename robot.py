@@ -118,17 +118,22 @@ class Robot:
 
     #有了初始状态，如果变化，就要有接受状态的方法
     def get_status(self):
-
+        self._update_position()
 
         return {
             'online': self.online,
             'moving': self.moving,
             'direction' : self.direction,
             'speed' : self.speed,
-            'current_task': self.current_task
+            'current_task': self.current_task,
+            "position": {
+                "x": round(self.x, 3),
+                "y": round(self.y, 3),
+            },
+            "trajectory": list(self.trajectory),
         }
     #有了初始状态，就要有改变状态的方法
-    def move_status(self, direction, speed):
+    def move_status(self, direction, speed, duration_s):
         #只需要规定方向和速度，这样肯定是正在运动，然后方向和速度要规定，合规才能是运动状态
         if direction not in self.VALID_DRICTIONS:
             raise ValueError("运动方向只能前进、后退、向左、向右")
@@ -136,28 +141,54 @@ class Robot:
             raise ValueError("速度必须是数字")
         if not 0 < speed <= 100:
             raise ValueError("速度在0-100之间")
-        self.online = True
-        self.moving = True
-        self.direction = direction
-        self.speed = speed
-        #设置了速度和方向，那么当前任务就应该停下来
-        self.current_task = None
+
+        if (not isinstance(duration_s, (int, float)) or isinstance(duration_s, bool) or not 0 < duration_s <= 60):
+            raise ValueError("时间必须是数字,且在0到60之间")
+        #单段运动
+        segments = [
+            {
+                "direction": direction,
+                "speed": speed,
+                "duration_s": duration_s,
+            }
+        ]
+        #启动运动
+        self._begin_motion(segments, event="move")
       
 
     #然后需要让机器人停止的方法
     def stop(self):
-        self.moving = False
-        self.direction = None
-        self.speed = 0
-        self.current_task = None
-    #需要定义机器人的任务状态
+        # 先计算已经走到哪里，再停在这个坐标
+        self._update_position()
+        self._finish_motion()
+        self._record_position("stop", force=True)
+
+
     def start_task(self, name):
         if name not in self.VALID_TASKS:
             raise ValueError("任务名称无效")
-        self.current_task = name
-        self.moving = False
-        self.direction = None
-        self.speed = 0
+        segment_duration = self.TASK_SIDE / self.TASK_SPEED
+
+        if name == "forward":
+            directions = ["forward"]
+        else:
+            # 从当前坐标出发，绕正方形一圈后回到起点
+            directions = ["forward", "right", "backward", "left"]
+
+        segments = [
+            {
+                "direction": direction,
+                "speed": self.TASK_SPEED,
+                "duration_s": segment_duration,
+            }
+            for direction in directions
+        ]
+
+        self._begin_motion(
+            segments,
+            event=f"task:{name}",
+            task_name=name,
+        )
 
         
         
