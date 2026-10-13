@@ -54,7 +54,7 @@ class Robot:
     #运动状态复位
     def _finish_motion(self):
         self._segments = []
-        self._segment_index = 0
+        self._segments_index = 0
         self.moving = False
         self.direction = None
         self.speed = 0
@@ -67,7 +67,7 @@ class Robot:
             return
         now = time.monotonic()
         while self._segments:
-            segment = self._segments[self._segment_index]
+            segment = self._segments[self._segments_index]
             duration = segment["duration_s"]
             elapsed = max(0.0, now - self._segment_started_at)
             travel_time = min(elapsed, duration)
@@ -91,9 +91,9 @@ class Robot:
             self._segment_started_at += duration
             self._segment_start_x = self.x
             self._segment_start_y = self.y
-            self._segment_index += 1
+            self._segments_index += 1
 
-            if self._segment_index >= len(self._segments):
+            if self._segments_index >= len(self._segments):
                 self._finish_motion()
                 return
 
@@ -103,7 +103,7 @@ class Robot:
         self._update_position()
 
         self._segments = segments
-        self._segment_index = 0
+        self._segmenst_index = 0
         self._segment_started_at = time.monotonic()
         self._segment_start_x = self.x
         self._segment_start_y = self.y
@@ -135,7 +135,7 @@ class Robot:
     #有了初始状态，就要有改变状态的方法
     def move_status(self, direction, speed, duration_s):
         #只需要规定方向和速度，这样肯定是正在运动，然后方向和速度要规定，合规才能是运动状态
-        if direction not in self.VALID_DRICTIONS:
+        if direction not in self.DRICTIONS:
             raise ValueError("运动方向只能前进、后退、向左、向右")
         if not isinstance(speed, (int, float)) or isinstance(speed, bool):
             raise ValueError("速度必须是数字")
