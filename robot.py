@@ -135,7 +135,7 @@ class Robot:
     #有了初始状态，就要有改变状态的方法
     def move_status(self, direction, speed, duration_s):
         #只需要规定方向和速度，这样肯定是正在运动，然后方向和速度要规定，合规才能是运动状态
-        if direction not in self.DRICTIONS:
+        if direction not in self.DIRECTIONS:
             raise ValueError("运动方向只能前进、后退、向左、向右")
         if not isinstance(speed, (int, float)) or isinstance(speed, bool):
             raise ValueError("速度必须是数字")
