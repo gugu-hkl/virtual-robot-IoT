@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1420">
+  <title>虚拟机器人控制台</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">R</div>
+        <div>
+          <p class="eyebrow">VIRTUAL ROBOT · CONTROL STATION</p>
+          <h1>虚拟机器人控制台</h1>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <div id="connection-chip" class="connection-chip" data-state="waiting" role="status">
+          <span class="connection-dot" aria-hidden="true"></span>
+          <span id="connection-text">正在连接</span>
+        </div>
+
+        <button id="stop-button" class="button button-danger" type="button">
+          <span class="button-label">立即停止</span>
+          <span class="button-spinner" aria-hidden="true"></span>
+        </button>
+      </div>
+    </header>
+
+    <div id="notice" class="notice" role="alert" hidden></div>
+
+    <main class="dashboard">
+      <section class="card map-card" aria-labelledby="map-title">
+        <div class="card-header">
+          <div>
+            <p class="section-kicker">LIVE POSITION</p>
+            <h2 id="map-title">坐标与轨迹</h2>
+            <p class="muted">单位：cm · X 向右 · Y 向上</p>
+          </div>
+          <button id="fit-button" class="button button-quiet" type="button">
+            适应轨迹范围
+          </button>
+        </div>
+
+        <div id="map-stage" class="map-stage">
+          <canvas
+            id="map-canvas"
+            role="img"
+            aria-label="机器人坐标图，显示坐标轴、轨迹、事件点和当前位置"
+          >
+            当前浏览器不支持 Canvas。
+          </canvas>
+          <div class="map-corner" aria-hidden="true">
+            <span>Y+</span>
+            <span>↑</span>
+          </div>
+        </div>
+
+        <div class="map-legend" aria-label="图例">
+          <span><i class="legend-line" aria-hidden="true"></i>运动轨迹</span>
+          <span><i class="legend-dot" aria-hidden="true"></i>机器人</span>
+          <span><i class="legend-stop" aria-hidden="true"></i>停止事件</span>
+        </div>
+      </section>
+
+      <div class="side-stack">
+        <section id="status-card" class="card status-card" aria-labelledby="status-title">
+          <div class="card-header">
+            <div>
+              <p class="section-kicker">DEVICE STATE</p>
+              <h2 id="status-title">当前位置</h2>
+            </div>
+            <span id="motion-badge" class="state-badge" data-state="waiting">等待数据</span>
+          </div>
+
+          <p id="stale-hint" class="stale-hint" hidden>
+            连接中断，下方坐标是上次收到的值。
+          </p>
+
+          <div class="position-grid">
+            <div class="position-value">
+              <span class="axis-label">X / cm</span>
+              <strong id="position-x">—</strong>
+            </div>
+            <div class="position-value">
+              <span class="axis-label">Y / cm</span>
+              <strong id="position-y">—</strong>
+            </div>
+          </div>
+
+          <dl class="status-list">
+            <div><dt>设备</dt><dd id="online-value">等待连接</dd></div>
+            <div><dt>运动</dt><dd id="motion-value">—</dd></div>
+            <div><dt>方向</dt><dd id="direction-value">—</dd></div>
+            <div><dt>速度</dt><dd><span id="speed-value">—</span> cm/s</dd></div>
+            <div><dt>当前任务</dt><dd id="task-value">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="card control-card" aria-labelledby="control-title">
+          <div class="card-header">
+            <div>
+              <p class="section-kicker">MANUAL CONTROL</p>
+              <h2 id="control-title">手动控制</h2>
+            </div>
+          </div>
+
+          <form id="move-form">
+            <label for="direction-input">方向</label>
+            <select id="direction-input" name="direction" required>
+              <option value="forward">前进 · Y+</option>
+              <option value="backward">后退 · Y−</option>
+              <option value="left">向左 · X−</option>
+              <option value="right">向右 · X+</option>
+            </select>
+
+            <div class="form-row">
+              <div>
+                <label for="speed-input">速度 <span>cm/s</span></label>
+                <input
+                  id="speed-input"
+                  name="speed"
+                  type="number"
+                  min="0.1"
+                  max="100"
+                  step="0.1"
+                  value="10"
+                  required
+                >
+              </div>
+              <div>
+                <label for="duration-input">时长 <span>秒</span></label>
+                <input
+                  id="duration-input"
+                  name="duration_s"
+                  type="number"
+                  min="0.1"
+                  max="60"
+                  step="0.1"
+                  value="2"
+                  required
+                >
+              </div>
+            </div>
+
+            <button id="move-button" class="button button-primary" type="submit">
+              <span class="button-label">发送移动指令</span>
+              <span class="button-spinner" aria-hidden="true"></span>
+            </button>
+          </form>
+        </section>
+
+        <section class="card tasks-card" aria-labelledby="tasks-title">
+          <div class="card-header">
+            <div>
+              <p class="section-kicker">PRESET TASKS</p>
+              <h2 id="tasks-title">预设任务</h2>
+            </div>
+          </div>
+
+          <p class="muted">任务从服务端当前坐标开始。</p>
+
+          <div class="task-buttons">
+            <button
+              class="button button-secondary task-button"
+              data-task="forward"
+              type="button"
+            >
+              <span class="button-label">Forward · 前进</span>
+              <span class="button-spinner" aria-hidden="true"></span>
+            </button>
+
+            <button
+              class="button button-secondary task-button"
+              data-task="square"
+              type="button"
+            >
+              <span class="button-label">Square · 正方形</span>
+              <span class="button-spinner" aria-hidden="true"></span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <section class="card sensor-card" aria-labelledby="sensor-title">
+        <div class="card-header">
+          <div>
+            <p class="section-kicker">SIMULATED SENSOR</p>
+            <h2 id="sensor-title">模拟传感器读数</h2>
+          </div>
+          <button id="sensor-button" class="button button-quiet" type="button">
+            刷新读数
+          </button>
+        </div>
+
+        <div class="sensor-grid">
+          <div class="sensor-item">
+            <span>distance</span>
+            <strong id="sensor-distance">—</strong>
+          </div>
+          <div class="sensor-item">
+            <span>temperature</span>
+            <strong id="sensor-temperature">—</strong>
+          </div>
+        </div>
+
+        <p id="sensor-note" class="muted">
+          模拟读数；当前后端返回固定值，未定义读数单位。
+        </p>
+      </section>
+
+      <section class="card activity-card" aria-labelledby="activity-title">
+        <div class="card-header">
+          <div>
+            <p class="section-kicker">ACTIVITY</p>
+            <h2 id="activity-title">操作与真实事件</h2>
+          </div>
+        </div>
+
+        <ul id="activity-list" class="activity-list" aria-live="polite">
+          <li id="activity-empty" class="activity-empty">
+            等待页面指令或服务端轨迹事件。
+          </li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

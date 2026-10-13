@@ -103,7 +103,7 @@ class Robot:
         self._update_position()
 
         self._segments = segments
-        self._segmenst_index = 0
+        self._segments_index = 0
         self._segment_started_at = time.monotonic()
         self._segment_start_x = self.x
         self._segment_start_y = self.y
