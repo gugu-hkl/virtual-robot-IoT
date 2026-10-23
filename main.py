@@ -1,4 +1,4 @@
-"""FastAPI 服务：提供网页，并将状态查询转发给 Webots 控制器。"""
+"""FastAPI 服务：网页、状态查询与 Webots 手动控制。"""
 
 from pathlib import Path
 from typing import Literal
@@ -8,7 +8,11 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from stage2.webots_bridge import WebotsUnavailable, get_webots_status
+from stage2.webots_bridge import (
+    WebotsError,
+    get_webots_status,
+    send_webots_command,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -20,8 +24,8 @@ app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
 
 class MoveRequest(BaseModel):
     direction: Literal["forward", "backward", "left", "right"]
-    speed: float = Field(gt=0, le=100, description="速度，cm/s")
-    duration_s: float = Field(gt=0, le=60, description="持续时间，秒")
+    speed: float = Field(gt=0, le=20, description="轮缘目标速度，cm/s")
+    duration_s: float = Field(gt=0, le=60, description="Webots 仿真时长，秒")
 
 
 class TaskRequest(BaseModel):
@@ -37,35 +41,49 @@ def index():
 def get_status():
     try:
         return get_webots_status()
-    except WebotsUnavailable as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except WebotsError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.detail,
+        ) from exc
 
 
 @app.get("/sensor")
 def get_sensor():
-    # 仍是第一阶段的固定模拟读数，不代表 Webots 传感器。
+    # 第一阶段保留的固定模拟读数；不是 Webots 障碍物检测。
     return {"distance": 100, "temperature": 25}
 
 
 @app.post("/move")
 def move(request: MoveRequest):
-    raise HTTPException(
-        status_code=503,
-        detail="Webots 车轮控制尚未接入，请先验收状态通信",
-    )
+    try:
+        return send_webots_command({
+            "action": "move",
+            "direction": request.direction,
+            "speed": request.speed,
+            "duration_s": request.duration_s,
+        })
+    except WebotsError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.detail,
+        ) from exc
 
 
 @app.post("/stop")
 def stop():
-    raise HTTPException(
-        status_code=503,
-        detail="Webots 停止控制尚未接入，请先验收状态通信",
-    )
+    try:
+        return send_webots_command({"action": "stop"})
+    except WebotsError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.detail,
+        ) from exc
 
 
 @app.post("/task")
 def task(request: TaskRequest):
     raise HTTPException(
         status_code=503,
-        detail="Webots 预设轨迹尚未接入，请先验收状态通信",
+        detail="Webots 预设轨迹尚未接入；下一次提交实现",
     )

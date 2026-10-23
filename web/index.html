@@ -98,6 +98,7 @@
             <div><dt>设备</dt><dd id="online-value">等待连接</dd></div>
             <div><dt>运动</dt><dd id="motion-value">—</dd></div>
             <div><dt>方向</dt><dd id="direction-value">—</dd></div>
+            <div><dt>朝向</dt><dd><span id="yaw-value">—</span> °</dd></div>
             <div><dt>速度</dt><dd><span id="speed-value">—</span> cm/s</dd></div>
             <div><dt>当前任务</dt><dd id="task-value">—</dd></div>
           </dl>
@@ -114,28 +115,28 @@
           <form id="move-form">
             <label for="direction-input">方向</label>
             <select id="direction-input" name="direction" required>
-              <option value="forward">前进 · Y+</option>
-              <option value="backward">后退 · Y−</option>
-              <option value="left">向左 · X−</option>
-              <option value="right">向右 · X+</option>
+              <option value="forward">前进</option>
+              <option value="backward">后退</option>
+              <option value="left">原地左转向</option>
+              <option value="right">原地右转向</option>
             </select>
 
             <div class="form-row">
               <div>
-                <label for="speed-input">速度 <span>cm/s</span></label>
+                <label for="speed-input">目标速度 <span>cm/s</span></label>
                 <input
                   id="speed-input"
                   name="speed"
                   type="number"
                   min="0.1"
-                  max="100"
+                  max="20"
                   step="0.1"
                   value="10"
                   required
                 >
               </div>
               <div>
-                <label for="duration-input">时长 <span>秒</span></label>
+                <label for="duration-input">仿真时长 <span>秒</span></label>
                 <input
                   id="duration-input"
                   name="duration_s"

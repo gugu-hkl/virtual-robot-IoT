@@ -22,6 +22,7 @@ const ui = {
   moveForm: document.getElementById("move-form"),
   moveButton: document.getElementById("move-button"),
   directionInput: document.getElementById("direction-input"),
+  yawValue: document.getElementById("yaw-value"),
   speedInput: document.getElementById("speed-input"),
   durationInput: document.getElementById("duration-input"),
   taskButtons: [...document.querySelectorAll(".task-button")],
@@ -65,10 +66,10 @@ const state = {
 };
 
 const directionNames = {
-  forward: "前进 · Y+",
-  backward: "后退 · Y−",
-  left: "向左 · X−",
-  right: "向右 · X+",
+  forward: "前进",
+  backward: "后退",
+  left: "原地向左",
+  right: "原地向右",
 };
 
 const reducedMotion = window.matchMedia(
@@ -187,6 +188,9 @@ function updateStatusText(status) {
   ui.motionValue.textContent = status.moving ? "运动中" : "已停止";
   ui.directionValue.textContent =
     directionNames[status.direction] || "—";
+  ui.yawValue.textContent = Number.isFinite(status.yaw_deg)
+    ? status.yaw_deg.toFixed(1)
+    : "—";
   ui.speedValue.textContent = Number.isFinite(status.speed)
     ? status.speed.toFixed(1)
     : "—";
@@ -219,8 +223,8 @@ function worldToScreen(x, y) {
 
 function fitToTrajectory() {
   const points = validTrajectory();
-  const xs = [0];
-  const ys = [0];
+  const xs = [];
+  const ys = [];
 
   for (const point of points) {
     xs.push(point.x);
@@ -231,6 +235,12 @@ function fitToTrajectory() {
     xs.push(state.status.position.x);
     ys.push(state.status.position.y);
   }
+
+  if (xs.length === 0) {
+    xs.push(0);
+    ys.push(0);
+  }
+
 
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
@@ -456,21 +466,14 @@ function drawRobot() {
   ctx.arc(0, 0, 10, 0, Math.PI * 2);
   ctx.stroke();
 
-  const angles = {
-    forward: -Math.PI / 2,
-    backward: Math.PI / 2,
-    left: Math.PI,
-    right: 0,
-  };
+  const yaw = state.status.yaw_deg;
 
-  if (
-    state.status.moving &&
-    Object.hasOwn(angles, state.status.direction)
-  ) {
-    ctx.rotate(angles[state.status.direction]);
+  if (Number.isFinite(yaw)) {
+    // Webots 平面朝向为逆时针正角；Canvas 屏幕 Y 轴向下。
+    ctx.rotate(-yaw * Math.PI / 180);
     ctx.fillStyle = "#09212a";
     ctx.beginPath();
-    ctx.moveTo(6, 0);
+    ctx.moveTo(9, 0);
     ctx.lineTo(-4, -4);
     ctx.lineTo(-4, 4);
     ctx.closePath();
@@ -789,7 +792,7 @@ ui.moveForm.addEventListener("submit", (event) => {
     !Number.isFinite(speed) ||
     !Number.isFinite(duration_s) ||
     speed <= 0 ||
-    speed > 100 ||
+    speed > 20 ||
     duration_s <= 0 ||
     duration_s > 60
   ) {
