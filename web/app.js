@@ -131,6 +131,9 @@ function serverEventText(point) {
     segment_end: "路段终点",
     "task:forward": "forward 任务起点",
     "task:square": "square 任务起点",
+    task_complete: "预设任务完成",
+    task_timeout: "预设任务超时停止",
+    "task:circle": "circle 任务起点",
   };
 
   if (!Object.hasOwn(names, event)) {

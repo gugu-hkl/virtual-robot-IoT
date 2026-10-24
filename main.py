@@ -29,7 +29,7 @@ class MoveRequest(BaseModel):
 
 
 class TaskRequest(BaseModel):
-    name: Literal["forward", "square"]
+    name: Literal["forward", "square", "circle"]
 
 
 @app.get("/", include_in_schema=False)
@@ -83,7 +83,13 @@ def stop():
 
 @app.post("/task")
 def task(request: TaskRequest):
-    raise HTTPException(
-        status_code=503,
-        detail="Webots 预设轨迹尚未接入；下一次提交实现",
-    )
+    try:
+        return send_webots_command({
+            "action": "task",
+            "name": request.name,
+        })
+    except WebotsError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.detail,
+        ) from exc

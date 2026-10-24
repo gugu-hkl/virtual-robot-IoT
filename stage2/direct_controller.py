@@ -16,7 +16,14 @@ STATUS_MAX_AGE_S = 5.0
 
 WHEEL_RADIUS_M = 0.033
 INPUT_SPEED_LIMIT_CM_S = 20.0
-
+TASK_SIDE_CM = 20.0
+TASK_FORWARD_SPEED_CM_S = 8.0
+TASK_TURN_SPEED_CM_S = 5.0
+TASK_PHASE_TIMEOUT_S = 12.0
+WHEEL_TRACK_CM = 16.0
+CIRCLE_RADIUS_CM = 20.0
+CIRCLE_CENTER_SPEED_CM_S = 8.0
+CIRCLE_TIMEOUT_S = 40.0
 
 class LocalControlServer(ThreadingHTTPServer):
     allow_reuse_address = True
@@ -79,6 +86,18 @@ def main():
         "speed": 0.0,
         "end_simulation_time": None,
     }
+    task = {
+        "name": None,
+        "phase": None,
+        "side_index": 0,
+        "phase_start_x": 0.0,
+        "phase_start_y": 0.0,
+        "phase_start_yaw_rad": 0.0,
+        "phase_started_at": 0.0,
+        "last_yaw_rad": 0.0,
+        "yaw_total_rad": 0.0,
+        "result": None,
+    }
     measurement = {
         "x": 0.0,
         "y": 0.0,
@@ -118,6 +137,148 @@ def main():
         motion["speed"] = 0.0
         motion["end_simulation_time"] = None
 
+    def cancel_task(result):
+        """清除正在执行的任务；调用者负责设置车轮。"""
+        if task["name"] is not None:
+            task["name"] = None
+            task["phase"] = None
+            task["result"] = result
+
+    def start_task_phase(phase):
+        """开始正方形的一条直边或一次原地转向。"""
+        task["phase"] = phase
+        task["phase_started_at"] = measurement["simulation_time_s"]
+        task["phase_start_x"] = measurement["x"]
+        task["phase_start_y"] = measurement["y"]
+        task["phase_start_yaw_rad"] = task["yaw_total_rad"]
+
+        if phase == "straight":
+            set_wheels("forward", TASK_FORWARD_SPEED_CM_S)
+            motion["direction"] = "forward"
+            motion["speed"] = TASK_FORWARD_SPEED_CM_S
+        elif phase == "turn":
+            set_wheels("left", TASK_TURN_SPEED_CM_S)
+            motion["direction"] = "left"
+            motion["speed"] = TASK_TURN_SPEED_CM_S
+        elif phase == "circle":
+            # 左轮慢、右轮快，形成向左的圆弧。
+            left_cm_s = CIRCLE_CENTER_SPEED_CM_S * (
+                1 - WHEEL_TRACK_CM / (2 * CIRCLE_RADIUS_CM)
+            )
+            right_cm_s = CIRCLE_CENTER_SPEED_CM_S * (
+                1 + WHEEL_TRACK_CM / (2 * CIRCLE_RADIUS_CM)
+            )
+
+            if max(left_cm_s, right_cm_s) > max_speed_cm_s:
+                raise RuntimeError("圆形任务超过当前电机限速")
+
+            left_motor.setVelocity(
+                (left_cm_s / 100) / WHEEL_RADIUS_M
+            )
+            right_motor.setVelocity(
+                (right_cm_s / 100) / WHEEL_RADIUS_M
+            )
+            motion["direction"] = "left"
+            motion["speed"] = CIRCLE_CENTER_SPEED_CM_S
+        
+        else:
+            raise ValueError(f"未知任务阶段：{phase}")
+
+        # 任务由传感器读数推进，不使用手动 /move 的结束时间。
+        motion["end_simulation_time"] = None
+
+    def finish_task(result, event):
+        stop_wheels()
+        record_position(event)
+        print(f"任务 {task['name']}：{result}", flush=True)
+        cancel_task(result)
+
+    def start_task(name, yaw_rad):
+        """从机器人当前 GPS 坐标和朝向开始。"""
+        if motion["direction"] is not None:
+            record_position("segment_end")
+
+        task.update({
+            "name": name,
+            "phase": None,
+            "side_index": 0,
+            "phase_start_x": measurement["x"],
+            "phase_start_y": measurement["y"],
+            "phase_start_yaw_rad": 0.0,
+            "phase_started_at": measurement["simulation_time_s"],
+            "last_yaw_rad": yaw_rad,
+            "yaw_total_rad": 0.0,
+            "result": None,
+        })
+
+        record_position(f"task:{name}")
+        start_task_phase("circle" if name == "circle" else "straight")
+        print(f"开始任务：{name}", flush=True)
+
+    def advance_task(yaw_rad):
+        """每个仿真步调用一次，根据 GPS 和朝向决定是否进入下一段。"""
+        if task["name"] is None:
+            return
+
+        # 把跨越 -π/π 边界的朝向变化还原为连续的小角度。
+        change_rad = math.atan2(
+            math.sin(yaw_rad - task["last_yaw_rad"]),
+            math.cos(yaw_rad - task["last_yaw_rad"]),
+        )
+        task["yaw_total_rad"] += change_rad
+        task["last_yaw_rad"] = yaw_rad
+
+        elapsed = (
+            measurement["simulation_time_s"] - task["phase_started_at"]
+        )
+        timeout_s = (
+            CIRCLE_TIMEOUT_S
+            if task["phase"] == "circle"
+            else TASK_PHASE_TIMEOUT_S
+        )
+        if elapsed > timeout_s:
+            finish_task("timeout", "task_timeout")
+            return
+
+        if task["phase"] == "circle":
+            turned_rad = abs(
+                task["yaw_total_rad"] - task["phase_start_yaw_rad"]
+            )
+            if turned_rad >= 2 * math.pi - math.radians(5):
+                finish_task("completed", "task_complete")
+            return
+
+        if task["phase"] == "straight":
+            distance_cm = math.hypot(
+                measurement["x"] - task["phase_start_x"],
+                measurement["y"] - task["phase_start_y"],
+            )
+            if distance_cm < TASK_SIDE_CM - 0.5:
+                return
+
+            record_position("segment_end")
+
+            if task["name"] == "forward":
+                finish_task("completed", "task_complete")
+            else:
+                start_task_phase("turn")
+            return
+
+        if task["phase"] == "turn":
+            turned_rad = abs(
+                task["yaw_total_rad"] - task["phase_start_yaw_rad"]
+            )
+            if turned_rad < math.radians(88):
+                return
+
+            record_position("segment_end")
+            task["side_index"] += 1
+
+            if task["side_index"] >= 4:
+                finish_task("completed", "task_complete")
+            else:
+                start_task_phase("straight")
+
     def publish_status():
         status = {
             "online": True,
@@ -125,7 +286,12 @@ def main():
             "moving": motion["direction"] is not None,
             "direction": motion["direction"],
             "speed": motion["speed"],
-            "current_task": None,
+            "current_task": task["name"],
+            "task_phase": (
+                f"{task['phase']}_{task['side_index'] + 1}"
+                if task["name"] is not None else None
+            ),
+            "last_task_result": task["result"],
             "position": {
                 "x": measurement["x"],
                 "y": measurement["y"],
@@ -242,6 +408,11 @@ def main():
                     self.send_json(422, {"error": "时长必须大于 0 且不超过 60 秒"})
                     return
 
+            elif action == "task":
+                if payload.get("name") not in ("forward", "square", "circle"):
+                    self.send_json(422, {"error": "未知预设任务"})
+                    return
+
             elif action != "stop":
                 self.send_json(422, {"error": "未知指令"})
                 return
@@ -302,6 +473,7 @@ def main():
 
             if not trajectory:
                 record_position("start")
+            advance_task(yaw_rad)
 
             # 轨迹点只取自 GPS；转弯时即使位置近似不变，朝向仍会更新。
             if (
@@ -322,6 +494,7 @@ def main():
             if end_time is not None and simulation_time >= end_time:
                 stop_wheels()
                 record_position("segment_end")
+                cancel_task("interrupted")
                 print("运动时长结束，已停止车轮", flush=True)
 
             publish_status()
@@ -361,7 +534,13 @@ def main():
                             f"{duration_s:.1f} 仿真秒",
                             flush=True,
                         )
+                    elif payload["action"] == "task":
+                        name = payload["name"]
+                        start_task(name, yaw_rad)
+                        message = f"Webots 控制器已启动预设任务：{name}"
+
                     else:
+                        cancel_task("stopped")
                         stop_wheels()
                         record_position("stop")
                         message = "Webots 控制器已设置车轮停止"
