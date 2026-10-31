@@ -1,0 +1,49 @@
+a/controller_manager:
+  ros__parameters:
+    update_rate: 50
+    diffdrive_controller:
+      type: diff_drive_controller/DiffDriveController
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+a/diffdrive_controller:
+  ros__parameters:
+    left_wheel_names: ["left wheel motor"]
+    right_wheel_names: ["right wheel motor"]
+    wheel_separation: 0.16
+    wheel_radius: 0.033
+    wheel_separation_multiplier: 1.112
+    base_frame_id: base_link
+    odom_frame_id: odom
+    tf_frame_prefix_enable: true
+    tf_frame_prefix: a
+    linear.x.max_velocity: 0.2
+
+a/joint_state_broadcaster:
+  ros__parameters:
+    extra_joints: [LDS-01_secondary_motor, LDS-01_main_motor]
+
+b/controller_manager:
+  ros__parameters:
+    update_rate: 50
+    diffdrive_controller:
+      type: diff_drive_controller/DiffDriveController
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+b/diffdrive_controller:
+  ros__parameters:
+    left_wheel_names: ["left wheel motor"]
+    right_wheel_names: ["right wheel motor"]
+    wheel_separation: 0.16
+    wheel_radius: 0.033
+    wheel_separation_multiplier: 1.112
+    base_frame_id: base_link
+    odom_frame_id: odom
+    tf_frame_prefix_enable: true
+    tf_frame_prefix: b
+    linear.x.max_velocity: 0.2
+
+b/joint_state_broadcaster:
+  ros__parameters:
+    extra_joints: [LDS-01_secondary_motor, LDS-01_main_motor]

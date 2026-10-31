@@ -1,3 +1,4 @@
+from glob import glob
 from setuptools import setup
 
 
@@ -15,6 +16,14 @@ setup(
         (
             "share/" + package_name,
             ["package.xml"],
+        ),
+        ("share/" + package_name + "/launch", glob("launch/*.launch.py")),
+        ("share/" + package_name + "/worlds", glob("worlds/*.wbt")),
+        (
+            "share/" + package_name + "/resource",
+            glob("resource/turtlebot_*.urdf")
+            + glob("resource/ros2control_dual.yaml")
+            + glob("resource/LICENSE.webots_ros2"),
         ),
     ],
     install_requires=["setuptools"],
