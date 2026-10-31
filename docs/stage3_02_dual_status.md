@@ -82,3 +82,4 @@ curl -i http://127.0.0.1:8000/robots/b/status
 - 8767 返回“尚未收到数据”：检查 `/a/odom`、`/b/odom` 是否存在且持续发布，双机器人控制器是否 `active`。
 - 8767 返回“数据过期”：检查 Webots 是否暂停、仿真时间是否推进、对应机器人驱动是否仍在运行。
 - 仅一台有数据：分别检查对应 `/a/controller_manager`、`/b/controller_manager` 和双机器人 launch 日志。
+
