@@ -37,6 +37,7 @@ setup(
             "command_publisher = robot_ros_bridge.command_publisher:main",
             "state_subscriber = robot_ros_bridge.state_subscriber:main",
             "ros_gateway = robot_ros_bridge.ros_gateway:main",
+            "dual_state_gateway = robot_ros_bridge.dual_state_gateway:main",
         ],
     },
 )

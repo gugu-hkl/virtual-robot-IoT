@@ -17,8 +17,13 @@ from rclpy.qos import (
 
 
 class StateSubscriberNode(Node):
-    def __init__(self, log_updates=True):
-        super().__init__("robot_state_subscriber")
+    def __init__(
+        self,
+        log_updates=True,
+        topic="/odom",
+        node_name="robot_state_subscriber",
+    ):
+        super().__init__(node_name)
 
         # BEST_EFFORT 订阅者既能接收 BEST_EFFORT 发布者，
         # 也能接收 RELIABLE 发布者的数据。
@@ -32,17 +37,18 @@ class StateSubscriberNode(Node):
         self._lock = threading.Lock()
         self._latest_status = None
         self._last_received_at = None
+        self._last_stamp = None
         self._last_logged_at = 0.0
         self._log_updates = log_updates
 
         self.subscription = self.create_subscription(
             Odometry,
-            "/odom",
+            topic,
             self.on_odometry,
             qos,
         )
 
-        self.get_logger().info("正在订阅 /odom，等待机器人状态……")
+        self.get_logger().info(f"正在订阅 {topic}，等待机器人状态……")
 
     def on_odometry(self, message):
         """每收到一条 /odom 消息，就更新一次内存中的最新状态。"""
@@ -79,9 +85,13 @@ class StateSubscriberNode(Node):
         }
 
         now = time.monotonic()
+        stamp = (message.header.stamp.sec, message.header.stamp.nanosec)
         with self._lock:
-            self._latest_status = status
-            self._last_received_at = now
+            # 重复的仿真时间戳不代表产生了新的机器人状态。
+            if stamp != self._last_stamp:
+                self._latest_status = status
+                self._last_received_at = now
+                self._last_stamp = stamp
 
         # /odom 更新较快；终端约每秒打印一次，内存仍保存每次更新。
         if self._log_updates and now - self._last_logged_at >= 1.0:
@@ -103,6 +113,13 @@ class StateSubscriberNode(Node):
                 return None
 
             return copy.deepcopy(self._latest_status)
+
+    def get_data_age_s(self):
+        """距最近一次仿真时间戳变化的墙钟秒数；未收到数据返回 None。"""
+        with self._lock:
+            if self._last_received_at is None:
+                return None
+            return time.monotonic() - self._last_received_at
 
 
 def main(args=None):

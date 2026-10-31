@@ -28,7 +28,7 @@ class BackendError(Exception):
         super().__init__(detail)
 
 
-def request_backend(method, path, payload=None):
+def request_backend(method, path, payload=None, base_url=None):
     data = None
     headers = {}
 
@@ -37,7 +37,7 @@ def request_backend(method, path, payload=None):
         headers["Content-Type"] = "application/json"
 
     request = Request(
-        f"{BACKEND_URL}{path}",
+        f"{base_url or BACKEND_URL}{path}",
         data=data,
         headers=headers,
         method=method,
@@ -58,9 +58,10 @@ def request_backend(method, path, payload=None):
 
         raise BackendError(exc.code, detail) from exc
     except (URLError, TimeoutError, OSError) as exc:
+        backend_name = "双机器人状态网关" if base_url else f"{BACKEND} 后端"
         raise BackendError(
             503,
-            f"无法连接 {BACKEND} 后端，或等待响应超时",
+            f"无法连接{backend_name}，或等待响应超时",
         ) from exc
     except ValueError as exc:
         raise BackendError(

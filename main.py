@@ -14,6 +14,7 @@ from stage2.backend_bridge import (
     get_backend_status,
     send_backend_command,
 )
+from stage3.state_bridge import get_robot_status
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -66,6 +67,17 @@ def index():
 def get_status():
     try:
         return get_backend_status()
+    except BackendError as exc:
+        backend_error(exc)
+
+
+@app.get("/robots/{robot_id}/status")
+def get_dual_robot_status(robot_id: str):
+    """查询双机器人世界中 a 或 b 的最新里程计状态。"""
+    if robot_id not in ("a", "b"):
+        raise HTTPException(status_code=404, detail="机器人标号只能是 a 或 b")
+    try:
+        return get_robot_status(robot_id)
     except BackendError as exc:
         backend_error(exc)
 
