@@ -15,6 +15,7 @@ from stage2.backend_bridge import (
     send_backend_command,
 )
 from stage3.state_bridge import get_robot_status
+from stage3.display_selection import display_selection
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -51,6 +52,10 @@ class TaskRequest(BaseModel):
     name: Literal["forward", "square", "circle"]
 
 
+class DisplaySelectionRequest(BaseModel):
+    robot_id: Literal["a", "b"] | None
+
+
 def backend_error(exc):
     raise HTTPException(
         status_code=exc.status_code,
@@ -80,6 +85,64 @@ def get_dual_robot_status(robot_id: str):
         return get_robot_status(robot_id)
     except BackendError as exc:
         backend_error(exc)
+
+
+@app.post("/display/selection")
+def set_display_selection(request: DisplaySelectionRequest):
+    """手动选择 OLED 显示 a、b，或用 null 清除选择。"""
+    robot_id, revision = display_selection.select(request.robot_id)
+    return {"selected_robot": robot_id, "selection_revision": revision}
+
+
+@app.get("/display/state")
+def get_display_state():
+    """ESP32 轮询：只返回当前选中机器人的新鲜状态。"""
+    robot_id, revision = display_selection.snapshot()
+    if robot_id is None:
+        return {
+            "state": "waiting",
+            "selected_robot": None,
+            "selection_revision": revision,
+        }
+
+    try:
+        status = get_robot_status(robot_id)
+    except BackendError as exc:
+        current_id, current_revision = display_selection.snapshot()
+        if current_revision != revision:
+            return {
+                "state": "switching",
+                "selected_robot": current_id,
+                "selection_revision": current_revision,
+            }
+        if "数据过期" in exc.detail:
+            code = "data_stale"
+        elif exc.status_code == 502:
+            code = "invalid_status"
+        else:
+            code = "backend_unavailable"
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={
+                "code": code,
+                "selected_robot": robot_id,
+                "message": exc.detail,
+            },
+        ) from exc
+
+    current_id, current_revision = display_selection.snapshot()
+    if current_revision != revision:
+        return {
+            "state": "switching",
+            "selected_robot": current_id,
+            "selection_revision": current_revision,
+        }
+    return {
+        "state": "live",
+        "selected_robot": robot_id,
+        "selection_revision": revision,
+        "status": status,
+    }
 
 
 @app.get("/sensor")

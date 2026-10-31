@@ -4,6 +4,8 @@
 
 > 当前 README 对应仓库的第二阶段实现。第一阶段的 `robot.py` 内存模拟器仍保留在仓库中，但当前 `main.py` 使用的是 Webots 或 ROS 2 后端；仅启动 FastAPI 不会自动启动仿真机器人。
 
+第三阶段正在开发双机器人与无线显示：双机器人启动见 [第一步说明](docs/stage3_01_dual_robot.md)，分别查询 a/b 状态见 [第二步说明](docs/stage3_02_dual_status.md)，ESP32 通过 Wi-Fi 在 OLED 上显示所选机器人状态见 [第三步说明](docs/stage3_03_wireless_oled.md)。第三阶段使用仓库中的 `dual_turtlebot.wbt`；下文第二阶段单机器人演示仍使用系统安装的官方示例世界。
+
 ## 演示画面
 
 网页显示坐标、轨迹、朝向、手动控制、预设任务和操作记录。Windows 只需要浏览器。
