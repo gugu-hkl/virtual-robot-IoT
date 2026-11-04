@@ -1,7 +1,7 @@
 /* SSD1315/SSD1306-compatible 128x64 I2C OLED, 5x7 ASCII text. */
 
 #include "oled.h"
-
+#include "esp_log.h"
 #include <stdint.h>
 #include <string.h>
 
