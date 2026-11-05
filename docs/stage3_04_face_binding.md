@@ -67,7 +67,7 @@ python -c 'import json; from pathlib import Path; p=Path("stage3/face_id/data/fa
 ```bash
 cd /home/gugu/virtual_robot_IoT/virtual-robot-IoT
 source .venv-face/bin/activate
-python -m stage3.face_id.run --camera 0 --api http://127.0.0.1:8000
+python -m stage3.face_id.run --camera 0 --api http://127.0.0.1:8000  #python -m stage3.face_id.run --camera 0 --api http://127.0.0.1:8000 --preview
 ```
 
 识别程序与 FastAPI 都运行在 Ubuntu，所以这里的 API 地址用 `127.0.0.1`。ESP32 仍继续请求 Ubuntu 的热点 IP。可在另一个终端观察选择接口：
