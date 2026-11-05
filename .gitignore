@@ -31,3 +31,6 @@ Thumbs.db
 /.venv-face/
 /stage3/face_id/models/
 /stage3/face_id/data/
+
+# 忽略 docs 目录下的所有 md 文档
+docs/*.md
