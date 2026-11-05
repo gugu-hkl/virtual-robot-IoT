@@ -1,12 +1,153 @@
 # Virtual Robot IoT
 
-在 Ubuntu 的 Webots 中运行 TurtleBot3Burger，使用 Windows 浏览器查看位置、发送运动指令和执行预设轨迹。项目提供两种可切换的控制链路：FastAPI 通过自编 Webots 外部控制器直接驱动车轮，或经自编 ROS 2 节点发布 `/cmd_vel` 并订阅 `/odom`。两种模式共用网页和五个 HTTP 接口。
+这是一个分阶段完成的物联网机器人项目。最终版本在 Ubuntu 中运行 Webots 双机器人、ROS 2、FastAPI 和人脸识别；Windows 只用浏览器控制；ESP32 通过 Wi-Fi 把当前选中机器人的运动状态显示在 OLED 上。
 
-> 当前 README 对应仓库的第二阶段实现。第一阶段的 `robot.py` 内存模拟器仍保留在仓库中，但当前 `main.py` 使用的是 Webots 或 ROS 2 后端；仅启动 FastAPI 不会自动启动仿真机器人。
+**最终演示链路：**刷脸选 a/b → 网页控制被选中的机器人 → Webots 中对应机器人运动 → `/a/odom` 或 `/b/odom` 更新 → 网页和 OLED 显示新状态。刷脸只选择目标，机器人运动由网页按钮触发；第三阶段没有“识别后自动执行轨迹”的功能。
 
-第三阶段的基础链路已接通代码：摄像头刷脸选择 a/b → Windows 双机器人网页 `/stage3` 发送控制 → Webots 对应机器人运动 → `/odom` 状态更新 → Wi-Fi OLED 显示更新。完整启动与验收见 [第三阶段最终演示说明](docs/stage3_05_web_control.md)；[双机器人世界](docs/stage3_01_dual_robot.md)、[状态查询](docs/stage3_02_dual_status.md)、[无线 OLED](docs/stage3_03_wireless_oled.md)、[人脸绑定](docs/stage3_04_face_binding.md)与 [Ubuntu 预览](docs/stage3_04a_face_preview.md)各有独立说明。第三阶段使用仓库中的 `dual_turtlebot.wbt`；下文第二阶段单机器人演示仍使用系统安装的官方示例世界。
+## 演示效果
 
-## 演示画面
+下图是 Windows 控制台与 Webots 的同屏画面。网页坐标图展示当前选中机器人的里程计轨迹，右侧显示实测位置、速度和手动控制。
+
+![第三阶段网页与 Webots 双机器人同屏](docs/images/stage3-webots-dashboard.png)
+
+ESP32 独立通过 Wi-Fi 查询 FastAPI，在 OLED 上显示机器人标号、X/Y 位置、线速度、角速度和数据年龄：
+
+<img src="docs/images/stage3-oled-live.jpeg" alt="ESP32 OLED 显示机器人 a 的里程计状态" width="560">
+
+## 系统架构
+
+![刷脸选择、网页控制与状态反馈三条链路](docs/images/stage3-architecture.png)
+
+| 进程或设备 | 职责 |
+| --- | --- |
+| Ubuntu 人脸识别进程 | 读取接入虚拟机的摄像头，稳定识别 A/B 后调用 `POST /display/selection`，分别选择 a/b |
+| Windows 浏览器 | 打开 `/stage3`；查看 a/b 状态，只向当前选中机器人发送运动指令 |
+| Ubuntu FastAPI | 提供网页和 HTTP API，保存选择版本，切换目标时尝试停止上一台机器人 |
+| 双机器人 ROS 2 网关 | 本机监听 `127.0.0.1:8767`；分别发布 `/a/cmd_vel`、`/b/cmd_vel`，订阅 `/a/odom`、`/b/odom` |
+| Webots | 在仓库的 `dual_turtlebot.wbt` 世界中仿真机器人 a 和 b |
+| ESP32 + OLED | 经同一 Wi-Fi 热点轮询 `/display/state`，显示当前目标的实时状态或连接错误 |
+
+控制话题在本项目的 ROS 2 Jazzy 环境中使用 `geometry_msgs/msg/TwistStamped`；状态话题使用 `nav_msgs/msg/Odometry`。`/odom` 是各机器人独立的里程计估计，a 与 b 的坐标原点不能当成同一张世界地图。Webots 暂停或状态超过 2 秒没有新时间戳时，接口报告数据过期。
+
+## 环境与硬件
+
+| 项目 | 已验收配置 |
+| --- | --- |
+| Ubuntu | Ubuntu 24.04、ROS 2 Jazzy、Webots R2025a、`webots_ros2_turtlebot`、`colcon` |
+| FastAPI | Python 虚拟环境 `.venv`，依赖见 `requirements.txt` |
+| 人脸识别 | 独立虚拟环境 `.venv-face`，OpenCV、NumPy、YuNet 与 SFace 模型 |
+| Windows | 浏览器访问 Ubuntu 的热点 IP；前置摄像头已接入 Ubuntu 虚拟机 |
+| 无线终端 | 经典 ESP32；ESP-IDF 6.1 开发版；1.30 英寸 128×64 SSD1315 OLED，I²C 地址 `0x3C` |
+
+OLED 接线：`VCC → 3V3`、`GND → GND`、`SDA → GPIO21`、`SCK/SCL → GPIO22`。Windows、桥接网络下的 Ubuntu 和 ESP32 需要接入同一热点；只有 FastAPI 的 `8000` 端口供局域网访问，ROS 网关的 `8767` 端口只监听 Ubuntu 本机。
+
+## 快速启动第三阶段
+
+以下命令在 **Ubuntu** 执行。示例假设仓库克隆在 `~/virtual-robot-IoT`；已有仓库时改用实际路径。首次部署先准备 Python 环境和人脸模板：
+
+```bash
+git clone https://github.com/gugu-hkl/virtual-robot-IoT.git
+cd virtual-robot-IoT
+
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+deactivate
+
+python3 -m venv .venv-face
+source .venv-face/bin/activate
+python -m pip install -r stage3/face_id/requirements.txt
+python -m stage3.face_id.download_models
+python -m stage3.face_id.enroll --person A --camera 0
+python -m stage3.face_id.enroll --person B --camera 0
+deactivate
+```
+
+注册 A/B 时每次只让一人入镜。若摄像头编号不是 `0`，在注册与正式识别命令中使用实际编号。模型和人脸模板仅保存在本机，仓库的 `.gitignore` 已排除这些文件。
+
+**ESP32 首次刷入或热点地址变化时**，在 Ubuntu 的 ESP-IDF 终端执行：
+
+```bash
+. ~/esp/esp-idf/export.sh
+cd ~/virtual-robot-IoT/stage3/esp32_oled
+idf.py set-target esp32
+idf.py menuconfig
+idf.py build
+idf.py -p /dev/ttyUSB0 flash monitor
+```
+
+在 `Robot OLED terminal` 菜单填写热点 SSID、密码和 `http://<Ubuntu热点IP>:8000/display/state`；保留 SDA 21、SCL 22、地址 `0x3C`。串口路径按实际设备替换。`sdkconfig` 含热点密码，已被忽略，不要上传。
+
+之后打开四个 Ubuntu 终端，依次启动：
+
+**终端 A：双机器人世界。**
+
+```bash
+source /opt/ros/jazzy/setup.bash
+cd ~/virtual-robot-IoT/ros2_ws
+colcon build --packages-select robot_ros_bridge --symlink-install
+source install/setup.bash
+ros2 launch robot_ros_bridge dual_turtlebot.launch.py
+```
+
+**终端 B：自编 ROS 2 状态与控制网关。**
+
+```bash
+source /opt/ros/jazzy/setup.bash
+cd ~/virtual-robot-IoT/ros2_ws
+source install/setup.bash
+ros2 run robot_ros_bridge dual_state_gateway --ros-args -p use_sim_time:=true
+```
+
+**终端 C：FastAPI。**只运行一个 Uvicorn 进程，不加 `--workers`，因为当前选择保存在进程内存中。
+
+```bash
+cd ~/virtual-robot-IoT
+source .venv/bin/activate
+ROBOT_BACKEND=ros python -m uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+**终端 D：人脸识别与 Ubuntu 实时预览。**
+
+```bash
+cd ~/virtual-robot-IoT
+source .venv-face/bin/activate
+python -m stage3.face_id.run --camera 0 --preview
+```
+
+在 Ubuntu 执行 `hostname -I` 找到热点 IP，然后在 Windows 浏览器打开 `http://<Ubuntu热点IP>:8000/stage3`。ESP32 使用同一 IP 请求 `/display/state`；不能把设备的服务地址设成 `127.0.0.1`。
+
+## 最短验收
+
+1. Webots 同时出现 a、b；`ros2 topic list -t` 中有两套 `/cmd_vel` 和 `/odom`；`GET /robots/a/status`、`GET /robots/b/status` 分别返回新鲜状态。
+2. 无人入镜时，网页等待选择、移动按钮不可用，OLED 显示 `WAIT SELECT`。
+3. A 稳定入镜后，预览窗口显示 `FACE: A`、`TARGET: a`、`API ACK: a`，网页选中 a，OLED 显示 `ROBOT A`。在网页发送前进，只有 a 运动；网页和 OLED 的 a 状态随 `/a/odom` 更新。
+4. B 稳定入镜后，网页与 OLED 切到 b。在网页发送原地左转，只有 b 转动；b 的朝向和角速度更新。分别点击停止按钮后，检查对应 `/odom` 的实测速度趋近零。
+5. 暂停 Webots 超过 2 秒，状态接口返回过期错误，网页禁用移动，OLED 显示 `DATA STALE`；恢复仿真后状态重新更新。未知人脸或多人同框不会随意切换目标。
+
+## 第三阶段 API
+
+| 路由 | 用途 |
+| --- | --- |
+| `GET /display/selection` | 查询当前选中机器人、`selection_revision` 和停止警告 |
+| `POST /display/selection` | 人脸进程提交 `{"robot_id":"a"}`、`{"robot_id":"b"}` 或 `null` |
+| `GET /robots/{id}/status` | 分别读取 a/b 的位置、朝向、实测线速度、角速度与数据年龄 |
+| `POST /robots/{id}/move` | 控制当前选中机器人；提交 `direction`、`speed`、`duration_s` 和 `selection_revision` |
+| `POST /robots/{id}/stop` | 单独停止 a 或 b，不要求该机器人当前被选中 |
+| `GET /display/state` | ESP32 轮询当前目标的显示状态 |
+
+`direction` 可为 `forward`、`backward`、`left`、`right`。第三阶段网关接受 `0 < speed ≤ 20` cm/s、`0 < duration_s ≤ 10` 仿真秒。旧选择版本的移动请求返回 `409`；状态过期或网关不可用时返回错误，不把旧数据当作实时读数。控制响应中的 `accepted: true` 只表示指令被接收，实际运动还要看 Webots 和后续 `/odom`。
+
+## 前两个阶段
+
+- **第一阶段：**`robot.py` 保存纯 Python 虚拟机器人状态；当前 `main.py` 已连接 Webots/ROS 后端，单独运行 FastAPI 不会自动启动仿真。
+- **第二阶段：**单机器人 TurtleBot3Burger 可用自编 Webots 外部控制器直接控制，或经自编 ROS 2 Publisher/Subscriber 控制；两种模式复用旧首页 `/` 与 `/status`、`/sensor`、`/move`、`/stop`、`/task`。第二阶段的 `square`、`circle` 是单机器人预设任务，**第三阶段刷脸不会自动触发这些任务**。
+
+第三阶段双机器人世界和第二阶段单机器人链路分别启动；不要让两个控制链路同时连接同一个机器人。以下保留第二阶段的独立启动说明。
+
+---
+
+## 第二阶段演示画面
 
 网页显示坐标、轨迹、朝向、手动控制、预设任务和操作记录。Windows 只需要浏览器。
 
@@ -16,11 +157,11 @@
 | --- | --- |
 | ![直连模式下的网页轨迹与 Webots 机器人](docs/images/direct-webots.png) | ![ROS 2 模式下的网页轨迹与 Webots 机器人](docs/images/ros-webots.png) |
 
-## 功能与数据流
+## 第二阶段功能与数据流
 
 - **手动控制：**前进、后退、原地左转、原地右转；指定轮缘目标速度（cm/s）和仿真时长（秒），可随时发送停止指令。
 - **预设任务：**`forward` 前进约 20 cm、`square` 绘制四条约 20 cm 的边、`circle` 绘制约 20 cm 半径的圆弧。任务从当前机器人位置和朝向开始，执行过程中使用仿真反馈推进。
-- **状态可视化：`/status`，绘制坐标与轨迹；显示服务端返回的位置、朝向、运动状态和任务状态。
+- **状态可视化：**通过 `/status` 绘制坐标与轨迹；显示服务端返回的位置、朝向、运动状态和任务状态。
 - **接口兼容：**两种后端复用 `GET /status`、`GET /sensor`、`POST /move`、`POST /stop`、`POST /task`。 
 
 ```mermaid
@@ -38,7 +179,8 @@ flowchart LR
 `ROBOT_BACKEND=direct` 或 `ROBOT_BACKEND=ros` 在启动 FastAPI 时选择后端；默认是 `direct`。图中的两条链路是**二选一**的运行方式：切换时要关闭前一模式的控制器、Webots 实例和 FastAPI，再按新模式的顺序启动。`8765` 与 `8766` 只监听 Ubuntu 本机 `127.0.0.1`；Windows 访问 `8000` 端口。
 
 直连模式的位置取自 Webots GPS 的世界坐标，ROS 2 模式的位置取自 `/odom` 的里程计坐标。
-## 运行环境
+
+## 第二阶段运行环境
 
 | 位置 | 依赖 |
 | --- | --- |
@@ -162,7 +304,7 @@ ros2 run robot_ros_bridge command_publisher \
 
 Publisher 的 `--linear` 单位是 m/s，`--angular` 单位是 rad/s；网页 `/move` 的 `speed` 单位则是 cm/s。Subscriber 应显示 `/odom` 中的位置、朝向及速度变化。
 
-## Windows 访问与接口
+## 第二阶段 Windows 访问与接口
 
 在 Ubuntu 执行 `hostname -I` 找到 Windows 可以访问的虚拟机 IP，然后在 **Windows 浏览器**打开：
 
@@ -170,7 +312,7 @@ Publisher 的 `--linear` 单位是 m/s，`--angular` 单位是 rad/s；网页 `/
 http://<Ubuntu虚拟机IP>:8000/
 ```
 
-第一页是控制台，第二页是 FastAPI 接口调试页。若页面打不开，先在 Ubuntu 本机检查 `http://127.0.0.1:8000/status`，再检查虚拟机网络和 8000 端口。
+首页 `/` 是单机器人控制台，`/docs` 是 FastAPI 接口调试页。若页面打不开，先在 Ubuntu 本机检查 `http://127.0.0.1:8000/status`，再检查虚拟机网络和 8000 端口。
 
 `direction` 只能是 `forward`、`backward`、`left`、`right`。`speed` 范围为大于 0 且不超过 20 cm/s；直连模式还会按 Webots 电机的实际速度上限检查。`duration_s` 范围为大于 0 且不超过 60 仿真秒。任务名支持 `forward`、`square`、`circle`。
 
@@ -178,7 +320,7 @@ http://<Ubuntu虚拟机IP>:8000/
 
 控制接口的成功响应表示指令已由当前后端接收并处理，**不代表整段运动或整个任务已经完成**。应继续查看 Webots 画面和 `/status` 的位置、轨迹与 `last_task_result`。两种后端都可能因仿真未运行或状态数据过期返回 `503`；参数无效时返回 `422`。
 
-## 最短验收流程
+## 第二阶段最短验收流程
 
 1. 按所选模式启动三个终端，在 Windows 打开控制台与 `/docs`，确认 `/status` 返回位置与朝向；Webots 画面中能看到 TurtleBot3Burger。
 2. 分别发送前进、后退、原地左转、原地右转。前后运动检查位置变化；原地转向主要检查 `yaw_deg`，位置可能基本不变。
@@ -190,20 +332,28 @@ http://<Ubuntu虚拟机IP>:8000/
 
 ```text
 virtual-robot-IoT/
-├── main.py                         # FastAPI 网页入口和五个公共接口
+├── main.py                         # FastAPI 网页入口、五个原有接口及第三阶段接口
 ├── requirements.txt                # FastAPI Python 环境依赖
-├── web/                            # HTML、CSS、JavaScript、Canvas 页面
-├── docs/images/                    # 本 README 的演示截图（复制交付文件时一并放入）
+├── web/                            # 单机器人与双机器人浏览器控制台
+├── docs/images/                    # 本 README 引用的演示截图和架构图
 ├── stage2/
 │   ├── backend_bridge.py           # 根据 ROBOT_BACKEND 选择 8765 或 8766
 │   ├── direct_controller.py        # Webots 外部控制器、GPS、车轮与任务
 │   └── webots_bridge.py            # 早期直连桥接代码；当前 main.py 不使用
+├── stage3/
+│   ├── display_selection.py        # a/b 选择与版本号
+│   ├── state_bridge.py             # FastAPI 到双机器人本机网关的请求
+│   ├── face_id/                    # 人脸注册、识别、预览和 A/B 选择
+│   └── esp32_oled/                 # ESP-IDF Wi-Fi + OLED 固件
 ├── ros2_ws/src/robot_ros_bridge/
+│   ├── launch/dual_turtlebot.launch.py  # 双机器人启动文件
+│   ├── worlds/dual_turtlebot.wbt   # 仓库内的双机器人世界
 │   ├── setup.py                     # ROS 2 可执行入口
 │   └── robot_ros_bridge/
 │       ├── command_publisher.py    # /cmd_vel 发布节点
 │       ├── state_subscriber.py      # /odom 订阅节点
-│       └── ros_gateway.py           # 本机 HTTP 网关与 ROS 2 任务状态
+│       ├── ros_gateway.py           # 第二阶段单机器人本机网关
+│       └── dual_state_gateway.py    # 第三阶段双机器人状态与控制网关
 ├── robot.py                         # 第一阶段内存模拟器代码
 └── README.md
 ```
