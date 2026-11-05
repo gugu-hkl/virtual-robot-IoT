@@ -4,7 +4,7 @@
 
 > 当前 README 对应仓库的第二阶段实现。第一阶段的 `robot.py` 内存模拟器仍保留在仓库中，但当前 `main.py` 使用的是 Webots 或 ROS 2 后端；仅启动 FastAPI 不会自动启动仿真机器人。
 
-第三阶段正在开发双机器人与无线显示：双机器人启动见 [第一步说明](docs/stage3_01_dual_robot.md)，分别查询 a/b 状态见 [第二步说明](docs/stage3_02_dual_status.md)，ESP32 通过 Wi-Fi 在 OLED 上显示所选机器人状态见 [第三步说明](docs/stage3_03_wireless_oled.md)，摄像头识别 A/B 并切换显示目标见 [第四步说明](docs/stage3_04_face_binding.md)，Ubuntu 摄像头实时预览见 [预览说明](docs/stage3_04a_face_preview.md)。第三阶段使用仓库中的 `dual_turtlebot.wbt`；下文第二阶段单机器人演示仍使用系统安装的官方示例世界。
+第三阶段的基础链路已接通代码：摄像头刷脸选择 a/b → Windows 双机器人网页 `/stage3` 发送控制 → Webots 对应机器人运动 → `/odom` 状态更新 → Wi-Fi OLED 显示更新。完整启动与验收见 [第三阶段最终演示说明](docs/stage3_05_web_control.md)；[双机器人世界](docs/stage3_01_dual_robot.md)、[状态查询](docs/stage3_02_dual_status.md)、[无线 OLED](docs/stage3_03_wireless_oled.md)、[人脸绑定](docs/stage3_04_face_binding.md)与 [Ubuntu 预览](docs/stage3_04a_face_preview.md)各有独立说明。第三阶段使用仓库中的 `dual_turtlebot.wbt`；下文第二阶段单机器人演示仍使用系统安装的官方示例世界。
 
 ## 演示画面
 

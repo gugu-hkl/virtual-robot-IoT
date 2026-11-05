@@ -1,0 +1,303 @@
+.stage3-shell {
+  width: min(100% - 40px, 1560px);
+}
+
+.mono,
+.stage3-metrics strong,
+.selection-hero strong,
+.robot-tile p {
+  font-family: var(--mono);
+}
+
+.selection-chip {
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.selection-chip[data-state="selected"] {
+  border-color: rgba(88, 226, 236, 0.45);
+  color: var(--cyan);
+  background: var(--cyan-soft);
+}
+
+.selection-chip[data-state="error"] {
+  border-color: rgba(255, 120, 129, 0.45);
+  color: var(--red);
+  background: var(--red-soft);
+}
+
+.stage3-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(335px, 0.85fr);
+  grid-template-areas:
+    "map side"
+    "robots activity";
+  gap: 18px;
+  padding-top: 20px;
+}
+
+.stage3-map-card {
+  grid-area: map;
+  display: flex;
+  flex-direction: column;
+  min-height: 780px;
+  overflow: hidden;
+}
+
+.stage3-map-stage {
+  min-height: 570px;
+}
+
+.map-footnote {
+  margin: 0;
+  padding: 16px 24px 19px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.stage3-side {
+  grid-area: side;
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 18px;
+}
+
+.stage3-selection-card,
+.stage3-live-card,
+.stage3-control-card,
+.stage3-robots-card,
+.stage3-activity-card {
+  padding-bottom: 20px;
+}
+
+.selection-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 0 24px;
+  padding: 16px;
+  border: 1px solid rgba(88, 226, 236, 0.2);
+  border-radius: 16px;
+  background: rgba(88, 226, 236, 0.065);
+}
+
+.selection-hero strong {
+  display: grid;
+  flex: none;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border-radius: 15px;
+  color: var(--cyan);
+  background: rgba(88, 226, 236, 0.13);
+  font-size: 46px;
+  line-height: 1;
+}
+
+.selection-hero span,
+.selection-hero small {
+  display: block;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.selection-hero > div {
+  min-width: 0;
+}
+
+.selection-hero span {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.selection-hero small {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.selection-warning {
+  margin: 12px 24px 0;
+  color: var(--red);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.selection-warning[hidden] {
+  display: none;
+}
+
+.stage3-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 24px;
+}
+
+.stage3-metrics div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(88, 226, 236, 0.12);
+  border-radius: 12px;
+  background: rgba(7, 18, 29, 0.35);
+}
+
+.stage3-metrics span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.stage3-metrics strong {
+  color: var(--cyan);
+  font-size: clamp(17px, 1.8vw, 23px);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.stage3-note {
+  margin: 14px 24px 0;
+}
+
+.stage3-control-card form {
+  display: grid;
+  gap: 10px;
+  padding: 0 24px;
+}
+
+.stage3-control-card label {
+  color: #c6d8de;
+  font-size: 13px;
+}
+
+.stage3-control-card label span {
+  color: var(--muted);
+  font: 11px var(--mono);
+}
+
+.stage3-control-card .button-primary:disabled {
+  cursor: not-allowed;
+}
+
+.stage3-robots-card {
+  grid-area: robots;
+}
+
+.stage3-activity-card {
+  grid-area: activity;
+}
+
+.robot-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 24px;
+}
+
+.robot-tile {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(7, 18, 29, 0.42);
+}
+
+.robot-tile[data-state="selected"] {
+  border-color: rgba(88, 226, 236, 0.5);
+  background: rgba(88, 226, 236, 0.07);
+}
+
+.robot-tile[data-state="stale"] {
+  border-color: rgba(255, 120, 129, 0.3);
+}
+
+.robot-tile-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.robot-tile-head strong {
+  font-size: 16px;
+}
+
+.robot-tile-head span {
+  color: var(--green);
+  font-size: 12px;
+}
+
+.robot-tile[data-state="stale"] .robot-tile-head span {
+  color: var(--red);
+}
+
+.robot-tile p {
+  min-height: 20px;
+  margin: 16px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.robot-tile .button {
+  min-height: 35px;
+  width: 100%;
+}
+
+.stage3-activity-card .activity-list {
+  max-height: 270px;
+}
+
+@media (max-width: 1080px) {
+  .stage3-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas: "side" "map" "robots" "activity";
+  }
+
+  .stage3-map-card {
+    min-height: 580px;
+  }
+
+  .stage3-map-stage {
+    min-height: 440px;
+  }
+}
+
+@media (max-width: 580px) {
+  .stage3-shell {
+    width: min(100% - 24px, 1560px);
+  }
+
+  .stage3-shell .top-actions {
+    flex-wrap: wrap;
+  }
+
+  .robot-tiles {
+    grid-template-columns: 1fr;
+    padding: 0 18px;
+  }
+
+  .selection-hero {
+    margin: 0 18px;
+  }
+
+  .stage3-metrics,
+  .stage3-control-card form {
+    padding: 0 18px;
+  }
+
+  .stage3-map-card {
+    min-height: 480px;
+  }
+
+  .stage3-map-stage {
+    min-height: 330px;
+  }
+}

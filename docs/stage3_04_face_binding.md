@@ -4,7 +4,7 @@
 
 Ubuntu 摄像头 → YuNet 检测人脸 → SFace 提取特征 → 与本地 A/B 模板比较 → 连续稳定识别 → FastAPI `POST /display/selection` → ESP32 轮询 `GET /display/state` → OLED 显示 a/b 实时状态。
 
-这一步只切换**显示目标**，不发运动指令。Webots 中 a、b 的运动仍由前面已验收的控制流程决定。后续再做“识别后触发 square/circle”。
+刷脸不会启动机器人运动。后续 [双机器人网页控制](stage3_05_web_control.md) 使网页能够控制已选中的机器人；切换显示目标时会尝试停止上一台机器人。“识别后自动执行 square/circle”方案已取消。
 
 程序只接受画面里恰好一张、足够大的脸。识别到 A 连续 5 帧后选择 a，识别到 B 连续 5 帧后选择 b；未见人脸、未知人脸、多人同框或结果不确定时都不会选择新机器人。已选中的人连续约 2 秒未被识别到，屏幕回到 `WAIT SELECT`。这些数字可通过命令行调整。
 
@@ -90,4 +90,4 @@ curl -s http://127.0.0.1:8000/display/state
 
 ## 此次提交范围
 
-建议提交信息：`feat(stage3): 加入人脸识别与机器人显示绑定`。只提交源码、依赖清单和说明文档；不要提交 ONNX 模型、`.venv-face` 或 `face_templates.json`。这一提交不包含人脸触发 Webots 运动，后续轨迹联动另做。
+建议提交信息：`feat(stage3): 加入人脸识别与机器人显示绑定`。只提交源码、依赖清单和说明文档；不要提交 ONNX 模型、`.venv-face` 或 `face_templates.json`。人脸识别负责选择显示目标；运动由后续网页控制功能触发。

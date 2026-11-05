@@ -4,7 +4,7 @@
 
 Webots 中的 a、b → 各自的 `/a/odom`、`/b/odom` → 本项目 `dual_state_gateway` → Ubuntu 本机 HTTP `127.0.0.1:8767` → FastAPI `GET /robots/a/status`、`GET /robots/b/status` → Windows 浏览器或其他 HTTP 客户端。
 
-本次仅增加状态查询，不改旧的五个接口，也不改控制网页。原 `/status` 仍属于第二阶段的单机器人后端；仅启动双机器人世界和新状态网关时，它不会自动显示 a、b。
+本文件记录第二次提交时的状态查询功能。后续 [双机器人网页控制](stage3_05_web_control.md) 已扩展同一个网关，使其同时提供 a/b 控制；旧五个接口仍属于第二阶段单机器人页面。
 
 `position_m.x/y/z` 的单位是米，`yaw_deg` 是角度，`linear_m_s` 是米/秒，`angular_rad_s` 是弧度/秒。`position_source: "odom"` 表示数据来自轮式里程计，坐标是相对于各自里程计原点的估计值，不是 Webots GPS 世界坐标。`simulation_time_s` 来自消息时间戳；`data_age_s` 是最近一次仿真时间戳变化距今的实际秒数。
 
@@ -28,7 +28,7 @@ ros2 launch robot_ros_bridge dual_turtlebot.launch.py
 source /opt/ros/jazzy/setup.bash
 cd /home/gugu/virtual_robot_IoT/virtual-robot-IoT/ros2_ws
 source install/setup.bash
-ros2 run robot_ros_bridge dual_state_gateway
+ros2 run robot_ros_bridge dual_state_gateway --ros-args -p use_sim_time:=true
 ```
 
 应看到它正在订阅 `/a/odom`、`/b/odom`，并监听 `127.0.0.1:8767`。ROS 2 系统依赖来自 Jazzy 环境；不要在普通 FastAPI 虚拟环境中直接运行这个 ROS 2 节点。

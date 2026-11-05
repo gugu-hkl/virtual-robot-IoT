@@ -21,8 +21,8 @@ PUBLISH_PERIOD_S = 0.1
 
 
 class CommandPublisherNode(Node):
-    def __init__(self):
-        super().__init__("robot_command_publisher")
+    def __init__(self, topic="/cmd_vel", node_name="robot_command_publisher"):
+        super().__init__(node_name)
 
         qos = QoSProfile(
             history=HistoryPolicy.KEEP_LAST,
@@ -32,7 +32,7 @@ class CommandPublisherNode(Node):
         )
         self.publisher = self.create_publisher(
             TwistStamped,
-            "/cmd_vel",
+            topic,
             qos,
         )
         self.timer = self.create_timer(

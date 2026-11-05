@@ -58,7 +58,7 @@ def request_backend(method, path, payload=None, base_url=None):
 
         raise BackendError(exc.code, detail) from exc
     except (URLError, TimeoutError, OSError) as exc:
-        backend_name = "双机器人状态网关" if base_url else f"{BACKEND} 后端"
+        backend_name = "双机器人网关" if base_url else f"{BACKEND} 后端"
         raise BackendError(
             503,
             f"无法连接{backend_name}，或等待响应超时",

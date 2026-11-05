@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1420">
+  <title>双机器人 · 刷脸控制台</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/stage3.css">
+  <script src="/static/stage3.js" defer></script>
+</head>
+<body>
+  <div class="app-shell stage3-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">2</div>
+        <div>
+          <p class="eyebrow">FACE ID · ROS 2 · WEBOTS · OLED</p>
+          <h1>双机器人控制台</h1>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span id="selection-chip" class="selection-chip" data-state="waiting" role="status">等待刷脸</span>
+        <a class="button button-quiet" href="/">第二阶段单机器人页面</a>
+      </div>
+    </header>
+
+    <div id="notice" class="notice" role="alert" hidden></div>
+
+    <main class="stage3-grid">
+      <section class="card stage3-map-card" aria-labelledby="map-title">
+        <div class="card-header">
+          <div>
+            <p class="section-kicker">SELECTED ROBOT · ODOMETRY</p>
+            <h2 id="map-title">等待刷脸选择</h2>
+            <p class="muted">仅绘制当前机器人 · 单位 cm · X 向右，Y 向上</p>
+          </div>
+          <button id="fit-button" class="button button-quiet" type="button">适应轨迹</button>
+        </div>
+        <div id="map-stage" class="map-stage stage3-map-stage">
+          <canvas id="map-canvas" role="img" aria-label="当前机器人里程计位置及网页采样轨迹">
+            当前浏览器不支持 Canvas。
+          </canvas>
+          <div class="map-corner" aria-hidden="true"><span>Y+</span><span>↑</span></div>
+        </div>
+        <p class="map-footnote">轨迹由本页定时采样，刷新网页后清空；a、b 的里程计原点不同，切换时分别显示。</p>
+      </section>
+
+      <div class="stage3-side">
+        <section class="card stage3-selection-card" aria-labelledby="selection-title">
+          <div class="card-header">
+            <div>
+              <p class="section-kicker">FACE SELECTION</p>
+              <h2 id="selection-title">当前控制目标</h2>
+            </div>
+            <span id="revision-label" class="mono muted">版本 —</span>
+          </div>
+          <div class="selection-hero">
+            <strong id="selected-robot">—</strong>
+            <div>
+              <span id="selection-text">等待摄像头识别 A 或 B</span>
+              <small>刷脸只选择目标；机器人只在网页发送控制指令后运动。</small>
+            </div>
+          </div>
+          <p id="selection-warning" class="selection-warning" hidden></p>
+        </section>
+
+        <section class="card stage3-live-card" aria-labelledby="live-title">
+          <div class="card-header">
+            <div>
+              <p class="section-kicker">MEASURED /ODOM</p>
+              <h2 id="live-title">当前机器人实测状态</h2>
+            </div>
+            <span id="live-badge" class="state-badge" data-state="waiting">等待数据</span>
+          </div>
+          <div class="stage3-metrics">
+            <div><span>X / cm</span><strong id="live-x">—</strong></div>
+            <div><span>Y / cm</span><strong id="live-y">—</strong></div>
+            <div><span>线速度 / cm/s</span><strong id="live-linear">—</strong></div>
+            <div><span>角速度 / rad/s</span><strong id="live-angular">—</strong></div>
+            <div><span>朝向 / °</span><strong id="live-yaw">—</strong></div>
+            <div><span>数据年龄 / s</span><strong id="live-age">—</strong></div>
+          </div>
+          <p class="muted stage3-note">位置、朝向和速度来自 Webots 驱动发布的对应 `/odom`；连接中断或数据过期时停止显示旧读数。</p>
+        </section>
+
+        <section class="card stage3-control-card" aria-labelledby="control-title">
+          <div class="card-header">
+            <div>
+              <p class="section-kicker">MANUAL COMMAND</p>
+              <h2 id="control-title">控制已选机器人</h2>
+            </div>
+          </div>
+          <form id="move-form">
+            <label for="direction-input">方向</label>
+            <select id="direction-input" required>
+              <option value="forward">前进</option>
+              <option value="backward">后退</option>
+              <option value="left">原地左转</option>
+              <option value="right">原地右转</option>
+            </select>
+            <div class="form-row">
+              <div>
+                <label for="speed-input">轮缘速度 <span>cm/s</span></label>
+                <input id="speed-input" type="number" min="0.1" max="20" step="0.1" value="8" required>
+              </div>
+              <div>
+                <label for="duration-input">仿真时长 <span>秒</span></label>
+                <input id="duration-input" type="number" min="0.1" max="10" step="0.1" value="1.5" required>
+              </div>
+            </div>
+            <button id="move-button" class="button button-primary" type="submit" disabled>
+              <span class="button-label">等待刷脸选择</span>
+              <span class="button-spinner" aria-hidden="true"></span>
+            </button>
+            <button id="stop-selected" class="button button-danger" type="button" disabled>停止当前机器人</button>
+          </form>
+          <p class="muted stage3-note">切换识别目标时，服务端会尝试先停止上一台机器人。移动请求携带选择版本，旧页面指令会被拒绝。</p>
+        </section>
+      </div>
+
+      <section class="card stage3-robots-card" aria-labelledby="robots-title">
+        <div class="card-header">
+          <div>
+            <p class="section-kicker">A / B TELEMETRY</p>
+            <h2 id="robots-title">两台机器人状态</h2>
+          </div>
+        </div>
+        <div class="robot-tiles">
+          <article id="robot-a-card" class="robot-tile" data-state="waiting">
+            <div class="robot-tile-head"><strong>机器人 a</strong><span id="robot-a-state">等待数据</span></div>
+            <p id="robot-a-summary" class="mono">x — · y — · v —</p>
+            <button class="button button-danger robot-stop" data-robot="a" type="button">停止 a</button>
+          </article>
+          <article id="robot-b-card" class="robot-tile" data-state="waiting">
+            <div class="robot-tile-head"><strong>机器人 b</strong><span id="robot-b-state">等待数据</span></div>
+            <p id="robot-b-summary" class="mono">x — · y — · v —</p>
+            <button class="button button-danger robot-stop" data-robot="b" type="button">停止 b</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="card stage3-activity-card" aria-labelledby="activity-title">
+        <div class="card-header">
+          <div>
+            <p class="section-kicker">PAGE ACTIVITY</p>
+            <h2 id="activity-title">选择与操作记录</h2>
+          </div>
+        </div>
+        <ul id="activity-list" class="activity-list" aria-live="polite">
+          <li id="activity-empty" class="activity-empty">等待选择和页面操作。</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -39,7 +39,7 @@ ros2 launch robot_ros_bridge dual_turtlebot.launch.py
 source /opt/ros/jazzy/setup.bash
 cd /home/gugu/virtual_robot_IoT/virtual-robot-IoT/ros2_ws
 source install/setup.bash
-ros2 run robot_ros_bridge dual_state_gateway
+ros2 run robot_ros_bridge dual_state_gateway --ros-args -p use_sim_time:=true
 ```
 
 **终端 C：FastAPI。**

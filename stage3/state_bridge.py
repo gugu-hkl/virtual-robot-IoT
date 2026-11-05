@@ -1,16 +1,16 @@
-"""FastAPI 到双机器人 ROS 2 状态网关的本机 HTTP 通信。"""
+"""FastAPI 到双机器人 ROS 2 网关的本机 HTTP 通信。"""
 
 from stage2.backend_bridge import BackendError, request_backend
 
 
-DUAL_STATE_URL = "http://127.0.0.1:8767"
+DUAL_GATEWAY_URL = "http://127.0.0.1:8767"
 
 
 def get_robot_status(robot_id):
     result = request_backend(
         "GET",
         f"/robots/{robot_id}/status",
-        base_url=DUAL_STATE_URL,
+        base_url=DUAL_GATEWAY_URL,
     )
 
     if (
@@ -24,4 +24,20 @@ def get_robot_status(robot_id):
     ):
         raise BackendError(502, "双机器人状态网关返回的数据格式无效")
 
+    return result
+
+
+def send_robot_command(robot_id, payload):
+    result = request_backend(
+        "POST",
+        f"/robots/{robot_id}/command",
+        payload,
+        base_url=DUAL_GATEWAY_URL,
+    )
+    if (
+        result.get("accepted") is not True
+        or result.get("robot_id") != robot_id
+        or result.get("action") != payload.get("action")
+    ):
+        raise BackendError(502, "双机器人网关返回的控制确认无效")
     return result
