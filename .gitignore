@@ -26,3 +26,8 @@ Thumbs.db
 /stage3/esp32_oled/managed_components/
 /stage3/esp32_oled/sdkconfig
 /stage3/esp32_oled/sdkconfig.old
+
+# 人脸模型、专用环境和本地人脸特征（不提交生物特征数据）
+/.venv-face/
+/stage3/face_id/models/
+/stage3/face_id/data/
